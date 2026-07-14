@@ -1,0 +1,139 @@
+import groovy.json.JsonSlurper
+
+// --- Choose the WalkMe flavor (single source of truth: the app's own
+// package.json) -------------------------------------------------------
+// Add a `walkme` block to your app's package.json (same key the sibling
+// walkme-react-native-sdk uses, so config is consistent across WalkMe's
+// mobile bridges):
+//   "walkme": { "walkmeMode": "WalkMeEditor" }
+// Omitted, or "WalkMe" -> walkme-android-sdk        (standard)
+// "WalkMeEditor"        -> walkme-android-sdk-editor (Power Mode)
+// CI / one-off override: WALKME_FLAVOR=WalkMeEditor takes precedence over
+// package.json (matches the env var override on the iOS side).
+// This module resolves it itself (rather than relying on the app's
+// android/app/build.gradle to hand off a value) so it works regardless of
+// multi-project evaluation order.
+ext.resolveWalkmeMode = { ->
+    def envOverride = System.getenv('WALKME_FLAVOR')
+    if (envOverride) return envOverride
+
+    def packageJsonFile = new File(rootProject.projectDir, '../package.json')
+    if (!packageJsonFile.exists()) {
+        logger.warn("@walkme-mobile/capacitor-plugin: no package.json found at ${packageJsonFile} — defaulting to \"WalkMe\".")
+        return 'WalkMe'
+    }
+    def parsed = new JsonSlurper().parse(packageJsonFile)
+    def mode = parsed?.walkme?.walkmeMode
+    return mode ?: 'WalkMe'
+}
+
+def rawMode = ext.resolveWalkmeMode()
+def normalizedMode = rawMode.toString().toLowerCase()
+def walkmeVariant
+if (normalizedMode == 'walkme') {
+    walkmeVariant = 'standard'
+} else if (normalizedMode == 'walkmeeditor') {
+    walkmeVariant = 'editor'
+} else {
+    throw new GradleException(
+        "@walkme-mobile/capacitor-plugin: unknown walkme.walkmeMode \"${rawMode}\" — expected \"WalkMe\" or \"WalkMeEditor\" " +
+        "(package.json, or the WALKME_FLAVOR env var)."
+    )
+}
+
+logger.quiet("@walkme-mobile/capacitor-plugin: building WalkMe Capacitor bridge for walkmeMode \"${rawMode}\"")
+
+buildscript {
+    // Must be new enough for whatever Kotlin stdlib version the WalkMe AAR
+    // (and, for the editor variant, AndroidX Compose) pull in transitively —
+    // Gradle's conflict resolution will happily bump the *stdlib jar* up to
+    // that version, but the Kotlin *compiler* stays pinned to whatever's
+    // declared here. A too-old compiler trying to read a newer stdlib's
+    // metadata fails with "incompatible version" and, confusingly, makes
+    // basic stdlib symbols (lazy, isNullOrBlank, runCatching, ...) look
+    // unresolved. Override with `-PwmKotlinVersion=x.y.z` if you need a
+    // different version aligned with the rest of your app.
+    ext.kotlin_version = project.hasProperty('wmKotlinVersion') ? project.property('wmKotlinVersion') : '2.2.10'
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+android {
+    namespace 'com.walkme.capacitor'
+    compileSdk project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 34
+
+    defaultConfig {
+        minSdkVersion 24 // matches WalkMe SDK's own minimum
+        targetSdkVersion project.hasProperty('targetSdkVersion') ? rootProject.ext.targetSdkVersion : 34
+    }
+
+    sourceSets {
+        main {
+            // Common bridge code always compiled: WMBridge.kt, WalkMePlugin.kt
+            java.srcDirs = ['src/main/kotlin']
+            // Only the chosen variant's adapter is added to the compile — this
+            // is what guarantees we never link both WalkMe artifacts together.
+            if (walkmeVariant == 'editor') {
+                java.srcDirs += 'src/editor/kotlin'
+            } else {
+                java.srcDirs += 'src/standard/kotlin'
+            }
+            manifest.srcFile 'src/main/AndroidManifest.xml'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+    // Required by both WalkMe artifacts. If the host app enforces centralized
+    // repository management (FAIL_ON_PROJECT_REPOS), add this to the app's
+    // root settings.gradle instead — see plugin README.
+    maven { url 'https://jitpack.io' }
+}
+
+dependencies {
+    implementation project(':capacitor-android')
+
+    // Capacitor's Plugin.getActivity() returns AppCompatActivity — without this
+    // explicit dependency it's not visible on this module's compile classpath
+    // (capacitor-android depends on it too, but doesn't re-export it via `api`).
+    implementation "androidx.appcompat:appcompat:${rootProject.hasProperty('androidxAppCompatVersion') ? rootProject.ext.androidxAppCompatVersion : '1.7.1'}"
+
+    // Optional version pin (mirrors walkme-react-native-sdk): set in the
+    // app's root android/build.gradle —
+    //   ext { walkmeVersion = '1.1.0'; walkmeEditorVersion = '1.1.0' }
+    // If omitted, the latest published version ('+') is used.
+    if (walkmeVariant == 'editor') {
+        def editorVersion = rootProject.hasProperty('walkmeEditorVersion') ? rootProject.ext.walkmeEditorVersion : '+'
+        implementation "com.github.WalkMe-int:walkme-android-sdk-editor:${editorVersion}"
+
+        // Editor SDK ships a Compose UI. If the host app is not already on
+        // Compose, these are required (safe no-ops if versions are aligned
+        // elsewhere in the app already).
+        implementation platform('androidx.compose:compose-bom:2025.12.00')
+        implementation 'androidx.compose.ui:ui:1.10.6'
+        implementation 'androidx.compose.ui:ui-tooling-preview:1.10.6'
+        implementation 'androidx.compose.material3:material3:1.4.0'
+        implementation 'androidx.compose.material:material-icons-core:1.7.8'
+    } else {
+        def standardVersion = rootProject.hasProperty('walkmeVersion') ? rootProject.ext.walkmeVersion : '+'
+        implementation "com.github.WalkMe-int:walkme-android-sdk:${standardVersion}"
+    }
+}

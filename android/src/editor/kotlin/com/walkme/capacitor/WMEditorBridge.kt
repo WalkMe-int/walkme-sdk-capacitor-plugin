@@ -1,0 +1,75 @@
+package com.walkme.capacitor
+
+import android.app.Activity
+import com.walkme.api.WalkMeEventUserVarsKey
+import com.walkme.api.WalkMeStartOptions
+import com.walkme.api.WalkmeDataCenter
+import com.walkme.pm.WalkmeSdkPowerMode
+
+/**
+ * Backs the plugin with `com.walkme.pm.WalkmeSdkPowerMode` (Power Mode /
+ * editor artifact). The editor SDK's public API is a subset of the standard
+ * SDK's (no restart/dismissItem/tenantId/item-analytics listeners per the
+ * WalkMe editor README), so those throw [WMUnsupportedInVariantException]
+ * here rather than silently doing nothing.
+ */
+class WMEditorBridge : WMBridge {
+
+    override val variantName = "editor"
+
+    override fun start(activity: Activity, options: WMStartOptions) {
+        val startOptions = WalkMeStartOptions(
+            systemGuid = options.systemGuid,
+            environment = options.environment,
+            dataCenter = toDataCenter(options.dataCenter),
+        )
+        WalkmeSdkPowerMode.start(activity, startOptions)
+        options.language?.let { WalkmeSdkPowerMode.setLanguage(it) }
+        options.userId?.let { WalkmeSdkPowerMode.setUserId(it) }
+    }
+
+    override fun stop() = WalkmeSdkPowerMode.stop()
+
+    override fun restart(): Nothing = throw WMUnsupportedInVariantException("restart", variantName)
+
+    override fun setUserId(userId: String?) = WalkmeSdkPowerMode.setUserId(userId)
+
+    override fun setLanguage(language: String) = WalkmeSdkPowerMode.setLanguage(language)
+
+    override fun setVariable(key: String, value: String?) = WalkmeSdkPowerMode.setVariable(key, value)
+
+    override fun setEventUserVars(values: Map<String, String>) {
+        val mapped = values.mapNotNull { (k, v) ->
+            runCatching { WalkMeEventUserVarsKey.valueOf(k) }.getOrNull()?.let { it to v }
+        }.toMap()
+        WalkmeSdkPowerMode.setEventUserVars(mapped)
+    }
+
+    override fun setTenantId(tenantId: String?): Nothing =
+        throw WMUnsupportedInVariantException("setTenantId", variantName)
+
+    override fun startItemByID(itemId: String, deepLink: String?) =
+        WalkmeSdkPowerMode.startItemByID(itemId.toInt(), deepLink)
+
+    override fun dismissItem(): Nothing = throw WMUnsupportedInVariantException("dismissItem", variantName)
+
+    override fun sendEvent(name: String, attributes: Map<String, String>?) =
+        WalkmeSdkPowerMode.sendEvent(name, attributes)
+
+    override fun setEventEmitter(emitter: WMEventEmitter) {
+        // The editor SDK's public API (per WalkMe README) does not expose
+        // item-info / analytics listener registration the way the standard
+        // SDK does, so there is nothing to wire up here today. Kept as a
+        // no-op (rather than throwing) since start() always calls this.
+    }
+
+    private fun toDataCenter(value: String): WalkmeDataCenter = when (value) {
+        "eu" -> WalkmeDataCenter.eu
+        "us01" -> WalkmeDataCenter.us01
+        "eu01" -> WalkmeDataCenter.eu01
+        "prod" -> WalkmeDataCenter.prod
+        else -> WalkmeDataCenter.Custom(value)
+    }
+}
+
+fun createBridge(): WMBridge = WMEditorBridge()

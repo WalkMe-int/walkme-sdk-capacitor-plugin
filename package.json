@@ -1,0 +1,48 @@
+{
+  "name": "@walkme-mobile/capacitor-plugin",
+  "version": "0.0.1",
+  "description": "Capacitor plugin for WalkMe mobile SDK (standard + editor variants) for Android and iOS.",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "files": [
+    "android/src/main/",
+    "android/src/standard/",
+    "android/src/editor/",
+    "android/build.gradle",
+    "android/walkme.gradle",
+    "dist/",
+    "ios/Package.swift",
+    "ios/Sources",
+    "scripts/"
+  ],
+  "bin": {
+    "wm-capacitor-sync-ios-variant": "scripts/set-ios-variant.js",
+    "wm-capacitor-fix-ios-project": "scripts/fix-ios-project.js"
+  },
+  "license": "Commercial",
+  "scripts": {
+    "build": "npm run clean && tsc -p tsconfig.esm.json && tsc -p tsconfig.cjs.json",
+    "clean": "rm -rf ./dist",
+    "watch": "tsc --watch",
+    "verify": "npm run build"
+  },
+  "dependencies": {
+    "xcode": "^3.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/core": "^8.0.0",
+    "typescript": "^5.5.0"
+  },
+  "peerDependencies": {
+    "@capacitor/core": ">=6.0.0"
+  },
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    },
+    "android": {
+      "src": "android"
+    }
+  }
+}

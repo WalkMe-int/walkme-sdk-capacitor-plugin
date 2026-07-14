@@ -1,0 +1,53 @@
+// @walkme-mobile/capacitor-plugin: apply this from your app's android/app/build.gradle —
+//
+//   apply from: "../../node_modules/@walkme-mobile/capacitor-plugin/android/walkme.gradle"
+//
+// (mirrors the equivalent android/walkme.gradle in walkme-react-native-sdk).
+//
+// What it does:
+//   1. Validates your app's `walkme.walkmeMode` (package.json) early, so a
+//      typo fails the build immediately with a clear message instead of a
+//      confusing "could not resolve dependency" error later.
+//   2. Adds the JitPack repository automatically. Gradle repository
+//      declarations inside a *dependency* project (this plugin's own
+//      android/build.gradle) don't apply when the consuming :app module
+//      resolves its own classpath — the repo has to be declared from the
+//      app's side, which is exactly what applying this script does.
+//
+// This module's actual variant selection (which WalkMe SDK gets compiled)
+// lives in @walkme-mobile/capacitor-plugin/android/build.gradle and reads the same
+// package.json independently, so applying this script is optional but
+// recommended — without it you only lose the early validation + repo
+// automation, not the ability to switch variants.
+
+import groovy.json.JsonSlurper
+
+def resolveWalkmeMode = {
+    def envOverride = System.getenv('WALKME_FLAVOR')
+    if (envOverride) return envOverride
+
+    def packageJsonFile = new File(project.projectDir, '../../package.json')
+    if (!packageJsonFile.exists()) {
+        return 'WalkMe'
+    }
+    def parsed = new JsonSlurper().parse(packageJsonFile)
+    def mode = parsed?.walkme?.walkmeMode
+    return mode ?: 'WalkMe'
+}
+
+def rawMode = resolveWalkmeMode()
+def normalizedMode = rawMode.toString().toLowerCase()
+if (!(normalizedMode in ['walkme', 'walkmeeditor'])) {
+    throw new GradleException(
+        "@walkme-mobile/capacitor-plugin: unknown walkme.walkmeMode \"${rawMode}\" in package.json — " +
+        "expected \"WalkMe\" or \"WalkMeEditor\" (any casing), or set the WALKME_FLAVOR env var."
+    )
+}
+
+rootProject.allprojects {
+    repositories {
+        maven { url 'https://jitpack.io' }
+    }
+}
+
+logger.quiet("@walkme-mobile/capacitor-plugin: walkme.gradle validated walkmeMode \"${rawMode}\" and ensured the JitPack repository is present.")

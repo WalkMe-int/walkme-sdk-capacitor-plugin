@@ -30,7 +30,7 @@ class WMEditorBridge : WMBridge {
 
     override fun stop() = WalkmeSdkPowerMode.stop()
 
-    override fun restart(): Nothing = throw WMUnsupportedInVariantException("restart", variantName)
+    override fun restart() = WalkmeSdkPowerMode.restart()
 
     override fun setUserId(userId: String?) = WalkmeSdkPowerMode.setUserId(userId)
 
@@ -45,13 +45,13 @@ class WMEditorBridge : WMBridge {
         WalkmeSdkPowerMode.setEventUserVars(mapped)
     }
 
-    override fun setTenantId(tenantId: String?): Nothing =
-        throw WMUnsupportedInVariantException("setTenantId", variantName)
+    override fun setTenantId(tenantId: String?) =
+        WalkmeSdkPowerMode.setTenantId(tenantId)
 
     override fun startItemByID(itemId: String, deepLink: String?) =
         WalkmeSdkPowerMode.startItemByID(itemId.toInt(), deepLink)
 
-    override fun dismissItem(): Nothing = throw WMUnsupportedInVariantException("dismissItem", variantName)
+    override fun dismissItem() = WalkmeSdkPowerMode.dismissItem()
 
     override fun sendEvent(name: String, attributes: Map<String, String>?) =
         WalkmeSdkPowerMode.sendEvent(name, attributes)

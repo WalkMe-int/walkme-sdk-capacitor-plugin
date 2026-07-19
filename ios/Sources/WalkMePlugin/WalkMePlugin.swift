@@ -66,7 +66,8 @@ public class WalkMePlugin: CAPPlugin, CAPBridgedPlugin, WMEventEmitter {
     }
 
     @objc func restart(_ call: CAPPluginCall) {
-        guarded(call) { try wmBridge.restart() }
+        wmBridge.restart()
+        call.resolve()
     }
 
     @objc func setUserId(_ call: CAPPluginCall) {
@@ -99,7 +100,8 @@ public class WalkMePlugin: CAPPlugin, CAPBridgedPlugin, WMEventEmitter {
     }
 
     @objc func setTenantId(_ call: CAPPluginCall) {
-        guarded(call) { try wmBridge.setTenantId(call.getString("tenantId")) }
+        wmBridge.setTenantId(call.getString("tenantId"))
+        call.resolve()
     }
 
     @objc func startItemByID(_ call: CAPPluginCall) {
@@ -112,7 +114,8 @@ public class WalkMePlugin: CAPPlugin, CAPBridgedPlugin, WMEventEmitter {
     }
 
     @objc func dismissItem(_ call: CAPPluginCall) {
-        guarded(call) { try wmBridge.dismissItem() }
+        wmBridge.dismissItem()
+        call.resolve()
     }
 
     @objc func sendEvent(_ call: CAPPluginCall) {
@@ -127,17 +130,6 @@ public class WalkMePlugin: CAPPlugin, CAPBridgedPlugin, WMEventEmitter {
 
     @objc func getVariant(_ call: CAPPluginCall) {
         call.resolve(["variant": wmBridge.variantName])
-    }
-
-    private func guarded(_ call: CAPPluginCall, _ block: () throws -> Void) {
-        do {
-            try block()
-            call.resolve()
-        } catch let error as WMBridgeError {
-            call.reject(error.description, "WM_UNSUPPORTED_IN_VARIANT")
-        } catch {
-            call.reject(error.localizedDescription, "WM_NATIVE_ERROR", error)
-        }
     }
 
     private static func dataCenterString(_ call: CAPPluginCall) -> String? {

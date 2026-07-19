@@ -8,10 +8,10 @@ import com.walkme.pm.WalkmeSdkPowerMode
 
 /**
  * Backs the plugin with `com.walkme.pm.WalkmeSdkPowerMode` (Power Mode /
- * editor artifact). The editor SDK's public API is a subset of the standard
- * SDK's (no restart/dismissItem/tenantId/item-analytics listeners per the
- * WalkMe editor README), so those throw [WMUnsupportedInVariantException]
- * here rather than silently doing nothing.
+ * editor artifact). `WalkmeSdkPowerMode` exposes restart/dismissItem/tenantId,
+ * so those are forwarded like any other call. The only real gap vs. the
+ * standard SDK today is item-analytics listener registration, which the editor
+ * SDK doesn't surface — see [setEventEmitter].
  */
 class WMEditorBridge : WMBridge {
 

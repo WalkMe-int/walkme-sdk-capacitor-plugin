@@ -3,9 +3,10 @@ import WMBridgeCore
 import WalkMeEditor
 
 /// Backs the plugin with `WalkMePowerMode` from the `WalkMeEditor` SPM product.
-/// The editor SDK's public API (per WalkMe README) is a subset of the
-/// standard SDK's — no restart/dismissItem/tenantId/analytics-or-item
-/// callbacks — so those throw `WMBridgeError.unsupportedInVariant`.
+/// `WalkMePowerMode` exposes static `restart`/`dismissItem`/`setTenantId`, so
+/// those are forwarded like any other call. The only real gap vs. the standard
+/// SDK today is the item/analytics listener callbacks, which `WalkMePowerMode`
+/// doesn't surface — see `setEventEmitter`.
 public final class WMEditorAdapter: WMBridge {
 
     public init() {}
@@ -26,8 +27,8 @@ public final class WMEditorAdapter: WMBridge {
         WalkMePowerMode.stop()
     }
 
-    public func restart() throws {
-        throw WMBridgeError.unsupportedInVariant(method: "restart", variant: variantName)
+    public func restart() {
+        WalkMePowerMode.restart()
     }
 
     public func setUserId(_ userId: String?) {
@@ -56,7 +57,7 @@ public final class WMEditorAdapter: WMBridge {
         WalkMePowerMode.setEventUserVars(mapped)
     }
 
-    public func setTenantId(_ tenantId: String?) throws {
+    public func setTenantId(_ tenantId: String?) {
         WalkMePowerMode.setTenantId(tenantId)
     }
 
@@ -69,7 +70,7 @@ public final class WMEditorAdapter: WMBridge {
         WalkMePowerMode.startItem(byID: id, deepLink: deepLink)
     }
 
-    public func dismissItem() throws {
+    public func dismissItem() {
         WalkMePowerMode.dismissItem()
     }
 

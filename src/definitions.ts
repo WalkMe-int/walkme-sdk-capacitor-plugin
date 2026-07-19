@@ -7,9 +7,9 @@
  *
  * Which variant is actually compiled into the app is a native, build-time
  * decision (see README "Choosing a variant") because the underlying WalkMe
- * artifacts must not be linked together. Methods not supported by the
- * variant that was built in will reject with a `WM_UNSUPPORTED_IN_VARIANT`
- * error code — see the per-method notes below.
+ * artifacts must not be linked together. Both variants currently support the
+ * full API surface below; the one real editor gap is the item/analytics
+ * listeners, which simply never fire on the editor variant.
  */
 
 export type WalkmeDataCenter = 'prod' | 'eu' | 'us01' | 'eu01' | { custom: string };
@@ -95,26 +95,17 @@ export interface WalkMePlugin {
   start(options: WalkMeStartOptions): Promise<void>;
   /** Tear down the SDK and release resources. */
   stop(): Promise<void>;
-  /**
-   * Re-initialize with the same options/host as the last successful start().
-   * Standard variant only.
-   */
+  /** Re-initialize with the same options/host as the last successful start(). */
   restart(): Promise<void>;
   setUserId(options: { userId: string | null }): Promise<void>;
   setLanguage(options: { language: string }): Promise<void>;
   setVariable(options: SetVariableOptions): Promise<void>;
   setEventUserVars(options: { values: Partial<Record<WalkMeEventUserVarsKey, string>> }): Promise<void>;
-  /**
-   * Set/clear the tenant id (max 50 chars, persisted across sessions).
-   * Standard variant only.
-   */
+  /** Set/clear the tenant id (max 50 chars, persisted across sessions). */
   setTenantId(options: { tenantId: string | null }): Promise<void>;
   /** Force-play a promotion by item id, optionally resolving a deep link first. */
   startItemByID(options: StartItemOptions): Promise<void>;
-  /**
-   * Dismiss the currently presented item (not launchers).
-   * Standard variant only.
-   */
+  /** Dismiss the currently presented item (not launchers). */
   dismissItem(): Promise<void>;
   sendEvent(options: SendEventOptions): Promise<void>;
 

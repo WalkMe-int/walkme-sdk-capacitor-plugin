@@ -23,7 +23,7 @@ public final class WMStandardAdapter: WMBridge {
         WalkMeSDK.stop()
     }
 
-    public func restart() throws {
+    public func restart() {
         WalkMeSDK.restart()
     }
 
@@ -49,7 +49,7 @@ public final class WMStandardAdapter: WMBridge {
         WalkMeSDK.setEventUserVars(mapped)
     }
 
-    public func setTenantId(_ tenantId: String?) throws {
+    public func setTenantId(_ tenantId: String?) {
         WalkMeSDK.setTenantId(tenantId)
     }
 
@@ -57,7 +57,7 @@ public final class WMStandardAdapter: WMBridge {
         WalkMeSDK.startItem(byID: itemId, deepLink: deepLink)
     }
 
-    public func dismissItem() throws {
+    public func dismissItem() {
         WalkMeSDK.dismissItem()
     }
 

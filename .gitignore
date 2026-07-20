@@ -33,3 +33,6 @@ ios/Package.resolved
 .idea/
 *.swp
 CLAUDE.md
+
+# Local SDK debugging symlink (see ios/Package.swift localSdkXcframework)
+ios/*.xcframework

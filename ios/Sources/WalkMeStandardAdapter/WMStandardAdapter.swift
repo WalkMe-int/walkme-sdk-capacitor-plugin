@@ -9,6 +9,11 @@ public final class WMStandardAdapter: WMBridge {
 
     public let variantName = "standard"
 
+    // WalkMeSDK.itemCallbacksDelegate is a `weak` property, so the adapter must
+    // hold the strong reference or the delegate deallocates immediately and item
+    // callbacks never fire.
+    private var itemDelegate: WMStandardItemDelegate?
+
     public func start(options: WMStartOptions) {
         let startOptions = WalkMeStartOptions(systemGuid: options.systemGuid)
         startOptions.environment = options.environment
@@ -69,7 +74,9 @@ public final class WMStandardAdapter: WMBridge {
         WalkMeSDK.setAnalyticsHandler { info in
             emitter.onAnalyticsEvent(eventName: "\(info.eventType)", params: info.payload)
         }
-        WalkMeSDK.setItemCallbacksDelegate(WMStandardItemDelegate(emitter: emitter))
+        let delegate = WMStandardItemDelegate(emitter: emitter)
+        itemDelegate = delegate // retained because the SDK holds it weakly
+        WalkMeSDK.setItemCallbacksDelegate(delegate)
     }
 
     private static func toDataCenter(_ value: String) -> WalkMeDataCenter {
@@ -83,7 +90,7 @@ public final class WMStandardAdapter: WMBridge {
     }
 }
 
-private final class WMStandardItemDelegate: WMItemCallbacksDelegate {
+private final class WMStandardItemDelegate: NSObject, WMItemCallbacksDelegate {
     private weak var emitter: WMEventEmitter?
 
     init(emitter: WMEventEmitter) {

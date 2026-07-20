@@ -13,6 +13,11 @@ public final class WMEditorAdapter: WMBridge {
 
     public let variantName = "editor"
 
+    // WalkMePowerMode.itemCallbacksDelegate is a `weak` property, so the adapter
+    // must hold the strong reference or the delegate deallocates immediately and
+    // item callbacks never fire.
+    private var itemDelegate: WMEditorItemDelegate?
+
     public func start(options: WMStartOptions) {
         let startOptions = WalkMeStartOptions(systemGuid: options.systemGuid)
         startOptions.environment = options.environment
@@ -79,9 +84,14 @@ public final class WMEditorAdapter: WMBridge {
     }
 
     public func setEventEmitter(_ emitter: WMEventEmitter) {
-        // No item/analytics listener hooks exposed by WalkMePowerMode today
-        // (per WalkMe README) — nothing to wire up. Kept as a no-op rather
-        // than throwing since start() always calls this.
+        // WalkMePowerMode exposes the same analytics/item callbacks as the
+        // standard SDK, so forward them to the emitter (mirrors WMStandardAdapter).
+        WalkMePowerMode.setAnalyticsHandler { info in
+            emitter.onAnalyticsEvent(eventName: "\(info.eventType)", params: info.payload)
+        }
+        let delegate = WMEditorItemDelegate(emitter: emitter)
+        itemDelegate = delegate // retained because the SDK holds it weakly
+        WalkMePowerMode.setItemCallbacksDelegate(delegate)
     }
 
     private static func toDataCenter(_ value: String) -> WalkMeDataCenter {
@@ -92,6 +102,25 @@ public final class WMEditorAdapter: WMBridge {
         case "prod": return .prod
         default: return .custom(value)
         }
+    }
+}
+
+/// Forwards WalkMePowerMode item lifecycle callbacks to the plugin emitter.
+/// NSObject-based because `WMItemCallbacksDelegate` is an `@objc` protocol with
+/// optional methods.
+private final class WMEditorItemDelegate: NSObject, WMItemCallbacksDelegate {
+    private weak var emitter: WMEventEmitter?
+
+    init(emitter: WMEventEmitter) {
+        self.emitter = emitter
+    }
+
+    func itemWillShow(_ itemInfo: WalkMeItemInfo) {
+        emitter?.onItemPresented(itemId: "\(itemInfo.itemId)", itemType: itemInfo.itemType, userData: nil)
+    }
+
+    func itemDidDismiss(_ itemInfo: WalkMeItemInfo) {
+        emitter?.onItemDismissed(itemId: "\(itemInfo.itemId)", actionType: itemInfo.action, userData: nil)
     }
 }
 

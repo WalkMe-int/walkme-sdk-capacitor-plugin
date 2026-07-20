@@ -18,7 +18,7 @@ public final class WMStandardAdapter: WMBridge {
         let startOptions = WalkMeStartOptions(systemGuid: options.systemGuid)
         startOptions.environment = options.environment
         startOptions.dataCenter = Self.toDataCenter(options.dataCenter)
-        startOptions.analyticMode = options.analyticsEnabled ? .on : .off
+        startOptions.analyticMode = options.analyticsEnabled ? .ON : .OFF
         options.language.map { startOptions.language = $0 }
         options.userId.map { startOptions.userId = $0 }
         WalkMeSDK.start(options: startOptions)
@@ -33,7 +33,9 @@ public final class WMStandardAdapter: WMBridge {
     }
 
     public func setUserId(_ userId: String?) {
-        WalkMeSDK.setUserId(userId)
+        if let userId {
+            WalkMeSDK.setUserId(userId)
+        }
     }
 
     public func setLanguage(_ language: String) {
@@ -45,10 +47,10 @@ public final class WMStandardAdapter: WMBridge {
     }
 
     public func setEventUserVars(_ values: [String: String]) {
-        var mapped: [WalkMeEventUserVarsKey: String] = [:]
+        var mapped: [String: String] = [:]
         for (key, value) in values {
             if let typedKey = WalkMeEventUserVarsKey(rawValue: key) {
-                mapped[typedKey] = value
+                mapped[typedKey.rawValue] = value
             }
         }
         WalkMeSDK.setEventUserVars(mapped)
@@ -59,7 +61,11 @@ public final class WMStandardAdapter: WMBridge {
     }
 
     public func startItem(byID itemId: String, deepLink: String?) {
-        WalkMeSDK.startItem(byID: itemId, deepLink: deepLink)
+        guard let id = Int(itemId) else {
+            assertionFailure("Invalid itemId: \(itemId)")
+            return
+        }
+        WalkMeSDK.startItem(byID: id, deepLink: deepLink)
     }
 
     public func dismissItem() {

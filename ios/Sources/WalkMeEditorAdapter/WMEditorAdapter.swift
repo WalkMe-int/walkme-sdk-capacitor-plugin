@@ -23,6 +23,7 @@ public final class WMEditorAdapter: WMBridge {
         startOptions.environment = options.environment
         startOptions.dataCenter = Self.toDataCenter(options.dataCenter)
         startOptions.logsEnabled = options.localLogsEnabled
+        startOptions.analyticMode = options.analyticsEnabled ? .ON : .OFF
         options.language.map { startOptions.language = $0 }
         options.userId.map { startOptions.userId = $0 }
         WalkMePowerMode.start(options: startOptions)

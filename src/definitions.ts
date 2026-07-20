@@ -35,7 +35,7 @@ export interface WalkMeStartOptions {
   userId?: string;
 }
 
-export type WalkMeEventUserVarsKey = 'NAME' | 'ROLE' | 'TYPE' | 'STATUS' | 'INFO';
+export type WalkMeEventUserVarsKey = 'name' | 'role' | 'type' | 'status' | 'info';
 
 export interface WMUserData {
   userAttributesMap?: Record<string, string>;

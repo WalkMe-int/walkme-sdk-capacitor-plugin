@@ -49,7 +49,9 @@ public final class WMStandardAdapter: WMBridge {
     public func setEventUserVars(_ values: [String: String]) {
         var mapped: [String: String] = [:]
         for (key, value) in values {
-            if let typedKey = WalkMeEventUserVarsKey(rawValue: key) {
+            // SDK enum rawValues are lowercase (name/role/type/status/info);
+            // accept any casing from JS.
+            if let typedKey = WalkMeEventUserVarsKey(rawValue: key.lowercased()) {
                 mapped[typedKey.rawValue] = value
             }
         }

@@ -4,30 +4,21 @@ import Foundation
 /// by `WalkMeSDK` from the `WalkMe` product) or `WMEditorAdapter` (backed by
 /// `WalkMePowerMode` from the `WalkMeEditor` product) — whichever adapter
 /// target Package.swift links in for the chosen `walkmeVariant`.
-///
-/// Methods documented as "standard only" in the WalkMe SDK README throw
-/// `WMBridgeError.unsupportedInVariant` from the editor implementation.
 public protocol WMBridge: AnyObject {
     var variantName: String { get } // "standard" | "editor"
 
     func start(options: WMStartOptions)
     func stop()
-
-    /// Standard variant only.
-    func restart() throws
+    func restart()
 
     func setUserId(_ userId: String?)
     func setLanguage(_ language: String)
     func setVariable(key: String, value: String?)
     func setEventUserVars(_ values: [String: String])
-
-    /// Standard variant only.
-    func setTenantId(_ tenantId: String?) throws
+    func setTenantId(_ tenantId: String?)
 
     func startItem(byID itemId: String, deepLink: String?)
-
-    /// Standard variant only.
-    func dismissItem() throws
+    func dismissItem()
 
     func sendEvent(name: String, attributes: [String: String]?)
 
@@ -68,15 +59,4 @@ public protocol WMEventEmitter: AnyObject {
     func onItemDismissed(itemId: String, actionType: String?, userData: [String: Any]?)
     func onItemAction(itemId: String, args: [String: String]?)
     func onAnalyticsEvent(eventName: String, params: [String: Any])
-}
-
-public enum WMBridgeError: Error, CustomStringConvertible {
-    case unsupportedInVariant(method: String, variant: String)
-
-    public var description: String {
-        switch self {
-        case let .unsupportedInVariant(method, variant):
-            return "\(method) is not supported by the '\(variant)' WalkMe variant"
-        }
-    }
 }

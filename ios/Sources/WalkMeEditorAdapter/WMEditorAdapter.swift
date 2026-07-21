@@ -3,20 +3,27 @@ import WMBridgeCore
 import WalkMeEditor
 
 /// Backs the plugin with `WalkMePowerMode` from the `WalkMeEditor` SPM product.
-/// The editor SDK's public API (per WalkMe README) is a subset of the
-/// standard SDK's — no restart/dismissItem/tenantId/analytics-or-item
-/// callbacks — so those throw `WMBridgeError.unsupportedInVariant`.
+/// `WalkMePowerMode` exposes static `restart`/`dismissItem`/`setTenantId`, so
+/// those are forwarded like any other call. The only real gap vs. the standard
+/// SDK today is the item/analytics listener callbacks, which `WalkMePowerMode`
+/// doesn't surface — see `setEventEmitter`.
 public final class WMEditorAdapter: WMBridge {
 
     public init() {}
 
     public let variantName = "editor"
 
+    // WalkMePowerMode.itemCallbacksDelegate is a `weak` property, so the adapter
+    // must hold the strong reference or the delegate deallocates immediately and
+    // item callbacks never fire.
+    private var itemDelegate: WMEditorItemDelegate?
+
     public func start(options: WMStartOptions) {
         let startOptions = WalkMeStartOptions(systemGuid: options.systemGuid)
         startOptions.environment = options.environment
         startOptions.dataCenter = Self.toDataCenter(options.dataCenter)
         startOptions.logsEnabled = options.localLogsEnabled
+        startOptions.analyticMode = options.analyticsEnabled ? .ON : .OFF
         options.language.map { startOptions.language = $0 }
         options.userId.map { startOptions.userId = $0 }
         WalkMePowerMode.start(options: startOptions)
@@ -26,8 +33,8 @@ public final class WMEditorAdapter: WMBridge {
         WalkMePowerMode.stop()
     }
 
-    public func restart() throws {
-        throw WMBridgeError.unsupportedInVariant(method: "restart", variant: variantName)
+    public func restart() {
+        WalkMePowerMode.restart()
     }
 
     public func setUserId(_ userId: String?) {
@@ -48,7 +55,9 @@ public final class WMEditorAdapter: WMBridge {
         var mapped: [String: String] = [:]
 
         for (key, value) in values {
-            if let typedKey = WalkMeEventUserVarsKey(rawValue: key) {
+            // SDK enum rawValues are lowercase (name/role/type/status/info);
+            // accept any casing from JS.
+            if let typedKey = WalkMeEventUserVarsKey(rawValue: key.lowercased()) {
                 mapped[typedKey.rawValue] = value
             }
         }
@@ -56,7 +65,7 @@ public final class WMEditorAdapter: WMBridge {
         WalkMePowerMode.setEventUserVars(mapped)
     }
 
-    public func setTenantId(_ tenantId: String?) throws {
+    public func setTenantId(_ tenantId: String?) {
         WalkMePowerMode.setTenantId(tenantId)
     }
 
@@ -69,7 +78,7 @@ public final class WMEditorAdapter: WMBridge {
         WalkMePowerMode.startItem(byID: id, deepLink: deepLink)
     }
 
-    public func dismissItem() throws {
+    public func dismissItem() {
         WalkMePowerMode.dismissItem()
     }
 
@@ -78,9 +87,14 @@ public final class WMEditorAdapter: WMBridge {
     }
 
     public func setEventEmitter(_ emitter: WMEventEmitter) {
-        // No item/analytics listener hooks exposed by WalkMePowerMode today
-        // (per WalkMe README) — nothing to wire up. Kept as a no-op rather
-        // than throwing since start() always calls this.
+        // WalkMePowerMode exposes the same analytics/item callbacks as the
+        // standard SDK, so forward them to the emitter (mirrors WMStandardAdapter).
+        WalkMePowerMode.setAnalyticsHandler { info in
+            emitter.onAnalyticsEvent(eventName: "\(info.eventType)", params: info.payload)
+        }
+        let delegate = WMEditorItemDelegate(emitter: emitter)
+        itemDelegate = delegate // retained because the SDK holds it weakly
+        WalkMePowerMode.setItemCallbacksDelegate(delegate)
     }
 
     private static func toDataCenter(_ value: String) -> WalkMeDataCenter {
@@ -91,6 +105,25 @@ public final class WMEditorAdapter: WMBridge {
         case "prod": return .prod
         default: return .custom(value)
         }
+    }
+}
+
+/// Forwards WalkMePowerMode item lifecycle callbacks to the plugin emitter.
+/// NSObject-based because `WMItemCallbacksDelegate` is an `@objc` protocol with
+/// optional methods.
+private final class WMEditorItemDelegate: NSObject, WMItemCallbacksDelegate {
+    private weak var emitter: WMEventEmitter?
+
+    init(emitter: WMEventEmitter) {
+        self.emitter = emitter
+    }
+
+    func itemWillShow(_ itemInfo: WalkMeItemInfo) {
+        emitter?.onItemPresented(itemId: "\(itemInfo.itemId)", itemType: itemInfo.itemType, userData: nil)
+    }
+
+    func itemDidDismiss(_ itemInfo: WalkMeItemInfo) {
+        emitter?.onItemDismissed(itemId: "\(itemInfo.itemId)", actionType: itemInfo.action, userData: nil)
     }
 }
 

@@ -1,23 +1,20 @@
 #!/usr/bin/env node
 /**
- * Applies the app's chosen WalkMe variant to this plugin's ios/Package.swift.
+ * Bakes an explicit WalkMe variant pin into this plugin's ios/Package.swift.
  *
- * Why this exists: on Android, Gradle has a real multi-project graph, so our
- * android/build.gradle can just read `walkme.walkmeMode` straight out of the
- * *app's* package.json at every build — zero extra steps for the developer.
- * Swift Package Manager has no equivalent concept; a package's Package.swift
- * has no way to see "the app that's consuming me" or read its files during
- * manifest resolution. So there's no way to make iOS as frictionless as
- * Android — this script is the closest practical substitute: it reads the
- * SAME `walkme.walkmeMode` field the Android side reads (single source of
- * truth, and the same key walkme-react-native-sdk uses), then copies that
- * choice into the plugin's Package.swift.
+ * NOTE: this script is now OPTIONAL. Package.swift auto-detects the variant at
+ * build time by reading `walkme.walkmeMode` from the host app's package.json
+ * itself (walking up out of node_modules), defaulting to "standard". This
+ * script only exists for setups that prefer an explicit value baked into
+ * node_modules (e.g. CI, or to avoid relying on the upward file walk): it
+ * reads the SAME `walkme.walkmeMode` field and writes the result into the
+ * `let pinnedVariant = "..."` line, which takes precedence over auto-detection
+ * (but not over the WALKME_FLAVOR env var).
  *
  * Usage (run from your app's root, i.e. next to capacitor.config.ts):
  *   npx wm-capacitor-sync-ios-variant
  *
- * Recommended: wire this into your app's own package.json so it happens
- * automatically:
+ * Optional: wire this into your app's own package.json to pin it on install:
  *   "scripts": { "postinstall": "wm-capacitor-sync-ios-variant" }
  *
  * Your app's package.json:
@@ -71,15 +68,15 @@ function patchPackageSwift(variant) {
   const pkgPath = path.join(__dirname, '..', 'ios', 'Package.swift');
   let contents = fs.readFileSync(pkgPath, 'utf8');
 
-  const pattern = /^let walkmeVariant = ".*"$/m;
+  const pattern = /^let pinnedVariant = ".*"$/m;
   if (!pattern.test(contents)) {
     throw new Error(
-      `[@walkme-mobile/capacitor-plugin] Could not find a "let walkmeVariant = ..." line in ${pkgPath} — ` +
+      `[@walkme-mobile/capacitor-plugin] Could not find a "let pinnedVariant = ..." line in ${pkgPath} — ` +
         'the plugin layout may have changed; this script needs updating too.',
     );
   }
 
-  contents = contents.replace(pattern, `let walkmeVariant = "${variant}"`);
+  contents = contents.replace(pattern, `let pinnedVariant = "${variant}"`);
   fs.writeFileSync(pkgPath, contents, 'utf8');
   console.log(
     `[@walkme-mobile/capacitor-plugin] ios/Package.swift set to variant "${variant}". ` +

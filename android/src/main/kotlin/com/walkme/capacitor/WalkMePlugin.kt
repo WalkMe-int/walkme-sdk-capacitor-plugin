@@ -117,15 +117,11 @@ class WalkMePlugin : Plugin(), WMEventEmitter {
     }
 
     private fun PluginCall.rejectWith(t: Throwable) {
-        if (t is WMUnsupportedInVariantException) {
-            reject(t.message, "WM_UNSUPPORTED_IN_VARIANT")
-        } else {
-            // Capacitor's PluginCall.reject(String, String, Exception) only
-            // accepts java.lang.Exception, not the broader Throwable that
-            // runCatching hands us (e.g. it'd reject an Error) — wrap.
-            val exception = t as? Exception ?: Exception(t)
-            reject(t.message ?: "WalkMe native call failed", "WM_NATIVE_ERROR", exception)
-        }
+        // Capacitor's PluginCall.reject(String, String, Exception) only accepts
+        // java.lang.Exception, not the broader Throwable that runCatching hands
+        // us (e.g. it'd reject an Error) — wrap.
+        val exception = t as? Exception ?: Exception(t)
+        reject(t.message ?: "WalkMe native call failed", "WM_NATIVE_ERROR", exception)
     }
 
     private fun dataCenterToString(call: PluginCall): String? {

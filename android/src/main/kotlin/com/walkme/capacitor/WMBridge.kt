@@ -8,10 +8,6 @@ import android.app.Activity
  * `com.walkme.pm.WalkmeSdkPowerMode`) — whichever one Gradle compiled in for
  * this build's `walkmeVariant`. [WalkMePlugin] talks only to this interface,
  * so it never needs to know which native artifact is actually present.
- *
- * Methods documented as "standard only" in the WalkMe SDK README throw
- * [UnsupportedOperationException] from the editor implementation; the plugin
- * layer turns that into a rejected promise with code `WM_UNSUPPORTED_IN_VARIANT`.
  */
 interface WMBridge {
 
@@ -56,7 +52,3 @@ interface WMEventEmitter {
     fun onItemAction(itemId: String, args: Map<String, String>?)
     fun onAnalyticsEvent(eventName: String, params: Map<String, Any?>)
 }
-
-/** Thrown by a bridge for methods its variant doesn't support; mapped to a rejected JS promise. */
-class WMUnsupportedInVariantException(method: String, variant: String) :
-    UnsupportedOperationException("$method is not supported by the '$variant' WalkMe variant")

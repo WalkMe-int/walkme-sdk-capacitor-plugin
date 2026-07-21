@@ -169,14 +169,14 @@ Replace `YOUR_SYSTEM_GUID` with the GUID from your WalkMe console. All other `st
 
 ```ts
 await WalkMe.stop();
-await WalkMe.restart(); // standard variant only
+await WalkMe.restart();
 await WalkMe.setUserId({ userId: 'user-123' });
 await WalkMe.setVariable({ key: 'plan', value: 'premium' });
 await WalkMe.setEventUserVars({ values: { NAME: 'John Doe', ROLE: 'admin' } });
 await WalkMe.setLanguage({ language: 'en' });
 await WalkMe.sendEvent({ name: 'button_clicked', attributes: { screen: 'home' } });
 await WalkMe.startItemByID({ itemId: '42' });
-await WalkMe.dismissItem(); // standard variant only
+await WalkMe.dismissItem();
 const { variant } = await WalkMe.getVariant(); // 'standard' | 'editor'
 ```
 
@@ -222,20 +222,20 @@ See `src/definitions.ts` for the full, authoritative TypeScript surface. Summary
 | -------------------------------- | ------------------------------ | --------------------------------------------------- |
 | `start(options)`                 | `WalkMeStartOptions`            | Start the SDK                                       |
 | `stop()`                         | —                               | Stop the SDK                                        |
-| `restart()`\*                    | —                               | Re-initialize with the same options as the last `start()` |
+| `restart()`                      | —                               | Re-initialize with the same options as the last `start()` |
 | `setUserId(options)`              | `{ userId: string \| null }`    | Set the end-user id                                 |
 | `setLanguage(options)`            | `{ language: string }`          | Set the display language                            |
 | `setVariable(options)`            | `SetVariableOptions`             | Set a segmentation variable                         |
 | `setEventUserVars(options)`       | `{ values: Partial<Record<WalkMeEventUserVarsKey, string>> }` | Set event user attributes  |
-| `setTenantId(options)`\*          | `{ tenantId: string \| null }`  | Set/clear the tenant id (max 50 chars, persisted)   |
+| `setTenantId(options)`            | `{ tenantId: string \| null }`  | Set/clear the tenant id (max 50 chars, persisted)   |
 | `startItemByID(options)`          | `StartItemOptions`               | Force-play a promotion by item id, optional deep link |
-| `dismissItem()`\*                 | —                               | Dismiss the currently presented item (not launchers) |
+| `dismissItem()`                   | —                               | Dismiss the currently presented item (not launchers) |
 | `sendEvent(options)`              | `SendEventOptions`                | Send a custom event                                 |
 | `getVariant()`                    | —                               | Which native variant (`'standard'` \| `'editor'`) this build was linked against |
 | `addListener(eventName, cb)`      | see below                       | Register a listener for one of the 4 event types    |
 | `removeAllListeners()`            | —                               | Clear every registered listener                     |
 
-\* Standard variant only — rejects with code `WM_UNSUPPORTED_IN_VARIANT` when called on an editor (WalkMeEditor) build.
+Both variants support the full method set above. The item lifecycle / analytics listeners are the one exception: they never fire on the editor (WalkMeEditor) variant, which doesn't expose those native callbacks.
 
 ### `WalkMeStartOptions`
 
@@ -283,7 +283,7 @@ See `src/definitions.ts` for the full, authoritative TypeScript surface. Summary
 | `{"code":"UNIMPLEMENTED"}` from any WalkMe call                     | Plugin missing from `ios/App/CapApp-SPM/Package.swift` (`cap sync` regression, ionic-team/capacitor#8325) or missing `-ObjC` linker flag | Run `npx wm-capacitor-fix-ios-project`; confirm it's wired into `postinstall` + `capacitor:sync:after` |
 | `wm-capacitor-sync-ios-variant`/`wm-capacitor-fix-ios-project`: "Unknown walkme.walkmeMode ..." | Typo in `walkme.walkmeMode`                             | Use exactly `WalkMe` or `WalkMeEditor` (any casing), or check the `WALKME_FLAVOR` env var |
 | SPM: "Dependencies could not be resolved" — two version requirements for `capacitor-swift-pm` | Your Capacitor version's generated `CapApp-SPM` pins an exact `capacitor-swift-pm` version outside this plugin's supported range | File an issue/bump the plugin — the range in `ios/Package.swift` needs widening for that Capacitor version |
-| Launch crash: `Library not loaded: @rpath/Lottie.framework/Lottie` | `Lottie.framework` resolved and linked, but not embedded in the app bundle | **Known open issue** — as a workaround, check the app target's General tab → "Frameworks, Libraries, and Embedded Content" and make sure `Lottie` is set to "Embed & Sign" (add it manually if it's missing from the list); also verify `Package.resolved` shows a `lottie-ios` version compatible with the WalkMe SDK version in use |
+| Launch crash: `Library not loaded: @rpath/Lottie.framework/Lottie` | `Lottie.framework` missing from the app bundle | Should not happen — the plugin depends on `lottie-spm` (airbnb's prebuilt dynamic `Lottie.xcframework`), which auto-embeds `Lottie.framework`. If you hit this, do a clean SPM re-resolve (Xcode → File → Packages → Reset Package Caches, or delete `DerivedData`) and confirm `App.app/Frameworks/Lottie.framework` exists after building. |
 | Editor SDK Compose-related build errors (Android, not iOS)         | Host app already declares its own Compose BOM at a different version | Reconcile manually — see "Known gaps" below                                     |
 | Unsure whether the *latest* WalkMe SDK version was actually picked up | SPM's `from:`/range constraints, or a stale `Package.resolved` | Compare `ios/App/App.xcodeproj/.../Package.resolved` (`walkme-ios-sdk` / `walkme-ios-sdk-editor` entry) against the latest tag at `github.com/WalkMe-int/walkme-ios-sdk(-editor)/tags`; if behind, delete `Package.resolved` and Xcode → File → Packages → Reset Package Caches |
 
@@ -307,7 +307,7 @@ A **major** version bump from WalkMe on either platform needs a manual update:
 ## Known gaps / next steps for a production build
 
 1. **iOS SPM + Capacitor 8**: open upstream issue (ionic-team/capacitor#8325) where plugin SPM products aren't always exposed/kept wired into the generated Xcode project. Handled by `npx wm-capacitor-fix-ios-project` as long as it's wired into both `postinstall` and `capacitor:sync:after` — see iOS Setup above.
-2. **Lottie framework embedding**: WalkMe's iOS SDKs need Lottie linked (declared as a dependency of this plugin's adapter targets), but the transitive dynamic-framework embedding through Capacitor's `CapApp-SPM` wrapper package isn't yet automated by this plugin the way the JitPack repo / `-ObjC` flag are. See the Troubleshooting table above for the current manual workaround.
+2. **Lottie framework embedding**: WalkMe's iOS SDK binaries hard-require a *dynamic* framework named exactly `Lottie.framework` (`@rpath/Lottie.framework/Lottie`). Handled automatically: the plugin depends on **`lottie-spm`** (airbnb's official SPM distribution of the prebuilt dynamic `Lottie.xcframework`) in `ios/Package.swift`, so `Lottie.framework` builds with the correct name and Xcode auto-embeds it — no host-app Xcode step. Uses a `from:` version range (no hand-managed checksum), and being a shared package it unifies cleanly with a host app that also uses `lottie-spm`.
 3. **Editor SDK Compose deps** (Android): currently always added when `walkmeMode` resolves to `WalkMeEditor`; if the host app already declares its own Compose BOM at a different version, reconcile manually.
 4. **`xcode` npm package dependency**: `wm-capacitor-fix-ios-project` uses it read-only (to locate build configuration UUIDs), then edits `project.pbxproj` via direct text splicing rather than the package's own `writeSync()` (see "How the iOS scripts work" above). Worth re-checking if the `xcode` package is ever upgraded.
 5. **Variant setup ergonomics**: handled via the shared `walkme.walkmeMode` field in `package.json` (see "Select a Flavor" above) rather than hand-editing `node_modules`. iOS still needs the extra sync step Android doesn't — inherent to SPM having no project-graph equivalent.

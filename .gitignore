@@ -35,3 +35,6 @@ ios/Package.resolved
 CLAUDE.md
 WalkMe.xcframework
 WalkMeEditor.xcframework
+
+# Local SDK debugging symlink (see ios/Package.swift localSdkXcframework)
+ios/*.xcframework

@@ -9,11 +9,16 @@ public final class WMStandardAdapter: WMBridge {
 
     public let variantName = "standard"
 
+    // WalkMeSDK.itemCallbacksDelegate is a `weak` property, so the adapter must
+    // hold the strong reference or the delegate deallocates immediately and item
+    // callbacks never fire.
+    private var itemDelegate: WMStandardItemDelegate?
+
     public func start(options: WMStartOptions) {
         let startOptions = WalkMeStartOptions(systemGuid: options.systemGuid)
         startOptions.environment = options.environment
         startOptions.dataCenter = Self.toDataCenter(options.dataCenter)
-        startOptions.analyticMode = options.analyticsEnabled ? .on : .off
+        startOptions.analyticMode = options.analyticsEnabled ? .ON : .OFF
         options.language.map { startOptions.language = $0 }
         options.userId.map { startOptions.userId = $0 }
         WalkMeSDK.start(options: startOptions)
@@ -23,12 +28,14 @@ public final class WMStandardAdapter: WMBridge {
         WalkMeSDK.stop()
     }
 
-    public func restart() throws {
+    public func restart() {
         WalkMeSDK.restart()
     }
 
     public func setUserId(_ userId: String?) {
-        WalkMeSDK.setUserId(userId)
+        if let userId {
+            WalkMeSDK.setUserId(userId)
+        }
     }
 
     public func setLanguage(_ language: String) {
@@ -40,24 +47,30 @@ public final class WMStandardAdapter: WMBridge {
     }
 
     public func setEventUserVars(_ values: [String: String]) {
-        var mapped: [WalkMeEventUserVarsKey: String] = [:]
+        var mapped: [String: String] = [:]
         for (key, value) in values {
-            if let typedKey = WalkMeEventUserVarsKey(rawValue: key) {
-                mapped[typedKey] = value
+            // SDK enum rawValues are lowercase (name/role/type/status/info);
+            // accept any casing from JS.
+            if let typedKey = WalkMeEventUserVarsKey(rawValue: key.lowercased()) {
+                mapped[typedKey.rawValue] = value
             }
         }
         WalkMeSDK.setEventUserVars(mapped)
     }
 
-    public func setTenantId(_ tenantId: String?) throws {
+    public func setTenantId(_ tenantId: String?) {
         WalkMeSDK.setTenantId(tenantId)
     }
 
     public func startItem(byID itemId: String, deepLink: String?) {
-        WalkMeSDK.startItem(byID: itemId, deepLink: deepLink)
+        guard let id = Int(itemId) else {
+            assertionFailure("Invalid itemId: \(itemId)")
+            return
+        }
+        WalkMeSDK.startItem(byID: id, deepLink: deepLink)
     }
 
-    public func dismissItem() throws {
+    public func dismissItem() {
         WalkMeSDK.dismissItem()
     }
 
@@ -69,7 +82,9 @@ public final class WMStandardAdapter: WMBridge {
         WalkMeSDK.setAnalyticsHandler { info in
             emitter.onAnalyticsEvent(eventName: "\(info.eventType)", params: info.payload)
         }
-        WalkMeSDK.setItemCallbacksDelegate(WMStandardItemDelegate(emitter: emitter))
+        let delegate = WMStandardItemDelegate(emitter: emitter)
+        itemDelegate = delegate // retained because the SDK holds it weakly
+        WalkMeSDK.setItemCallbacksDelegate(delegate)
     }
 
     private static func toDataCenter(_ value: String) -> WalkMeDataCenter {
@@ -83,7 +98,7 @@ public final class WMStandardAdapter: WMBridge {
     }
 }
 
-private final class WMStandardItemDelegate: WMItemCallbacksDelegate {
+private final class WMStandardItemDelegate: NSObject, WMItemCallbacksDelegate {
     private weak var emitter: WMEventEmitter?
 
     init(emitter: WMEventEmitter) {

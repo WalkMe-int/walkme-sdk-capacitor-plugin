@@ -112,14 +112,14 @@ let walkmeVersionOverride = resolveWalkmeVersion()
 // WalkMe release requires bumping the base version below by hand (SwiftPM
 // treats major bumps as potentially breaking and won't cross them
 // automatically), same tradeoff as any real dependency-pinning strategy.
-let walkmeStandardMinVersion = "1.1.2"
+let walkmeStandardMinVersion = "1.1.4"
 // Was "0.1.6" (the editor SDK's old 0.x beta line). WalkMe has since shipped
 // a stable 1.x line (currently 1.1.2), but SPM's `from:` caps resolution at
 // the next major version — so the 0.1.6 floor was silently preventing this
 // plugin from ever crossing into 1.x, no matter how often packages were
 // re-resolved. Bumped to track the new major line; bump again by hand
 // whenever WalkMe ships 2.x.
-let walkmeEditorMinVersion = "1.1.2"
+let walkmeEditorMinVersion = "1.1.4"
 
 var adapterTargetName: String { walkmeVariant == "editor" ? "WalkMeEditorAdapter" : "WalkMeStandardAdapter" }
 

@@ -21,12 +21,22 @@
     "wm-capacitor-fix-ios-project": "scripts/fix-ios-project.js"
   },
   "license": "Commercial",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WalkMe-int/walkme-sdk-capacitor-plugin.git"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
   "scripts": {
     "build": "npm run clean && tsc -p tsconfig.esm.json && tsc -p tsconfig.cjs.json",
     "clean": "rm -rf ./dist",
     "watch": "tsc --watch",
-    "verify": "npm run build"
+    "verify": "npm run build",
+    "prepublishOnly": "npm run build"
   },
+
   "dependencies": {
     "xcode": "^3.0.1"
   },

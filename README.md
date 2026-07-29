@@ -11,11 +11,11 @@ Capacitor bridge for **WalkMe** and WalkMe Power Mode (**WalkMeEditor**) SDKs on
 | ------------------- | -------------------- | ---------------------- |
 | Min OS               | Android 7.0 (API 24) | iOS 14                 |
 | Native SDK source    | JitPack               | Swift Package Manager  |
-| Required Capacitor    | 6+ (Android)          | 8+ (or 6/7 with SPM opted in) |
+| Required Capacitor    | 6+ (Android)          | 8+ |
 
 The two variants of each native SDK must never be linked into the same app build (per WalkMe's own docs), so which one this plugin compiles against is a **one-time native project setting**, not a runtime choice.
 
-> This plugin ships only a Swift Package Manager manifest for iOS — no CocoaPods `.podspec` — so a CocoaPods-based Capacitor iOS project cannot consume it. (CocoaPods itself is being sunset industry-wide — the CocoaPods Specs repo goes read-only Dec 2, 2026 — so this is the forward-compatible path.)
+> This plugin ships only a Swift Package Manager manifest for iOS — no CocoaPods `.podspec` — so a CocoaPods-based Capacitor iOS project cannot consume it. (CocoaPods itself is being sunset industry-wide — the CocoaPods Specs repo goes read-only Dec 2, 2026 — so this is the forward-compatible path.) The WalkMe iOS SDK is distributed only via SPM, so SPM support isn't optional — Capacitor 8 is the first version where SPM is the default iOS project structure, which is why iOS requires 8+ with no earlier fallback.
 
 ---
 
@@ -50,7 +50,7 @@ Add a `walkme` block to your app's `package.json`. **Both platforms read this sa
 | omitted, or `"WalkMe"`    | standard **WalkMe** (default)             |
 | `"WalkMeEditor"`          | Power Mode (**WalkMeEditor**)             |
 
-Values are case-insensitive. An unrecognized value fails the build (Android) or the sync script (iOS) with a clear error rather than silently defaulting.
+Values are case-insensitive. An unrecognized value fails the build on Android (`GradleException` with a clear message); on iOS it logs a warning during SPM resolution and falls back to `"standard"` rather than failing the build.
 
 **CI / one-off override (either platform):** the `WALKME_FLAVOR` env var takes precedence over `package.json` — e.g. `WALKME_FLAVOR=WalkMeEditor npx cap sync`.
 
@@ -89,17 +89,9 @@ If omitted, the latest published version (`+`) is used.
 
 ## iOS Setup
 
-> Swift Package Manager has no equivalent of Gradle's project graph — a package's `Package.swift` has no way to see "the app that's consuming me" or read its files. So iOS needs a couple of extra one-time steps that Android doesn't. Once wired in, they run automatically forever (including across `cap sync` runs).
+> Swift Package Manager has no equivalent of Gradle's project graph — a package's `Package.swift` has no way to see "the app that's consuming me" or read its files. This plugin's `ios/Package.swift` works around that itself: it walks up from its own location (inside your `node_modules`) to find your app's `package.json` and reads `walkme.walkmeMode` (and optional `walkmeVersion`) directly — no script or build step needed for variant selection. The one real gap Android doesn't have is a Capacitor/SPM project-wiring bug (below), which does need a one-time setup step that then runs automatically forever.
 
-### 1. Sync the chosen variant into the plugin's `Package.swift`
-
-```bash
-npx wm-capacitor-sync-ios-variant
-```
-
-Reads your `package.json`'s `walkme.walkmeMode` and patches this plugin's `ios/Package.swift` accordingly. Since `Package.swift` lives in `node_modules`, this doesn't survive a fresh `npm install` on its own — wire it into your `postinstall` script (see step 3).
-
-### 2. Fix the Capacitor 8 SPM gap + linker flag
+### 1. Fix the Capacitor 8 SPM gap + linker flag
 
 ```bash
 npx wm-capacitor-fix-ios-project
@@ -107,20 +99,20 @@ npx wm-capacitor-fix-ios-project
 
 There's an open upstream issue (ionic-team/capacitor#8325) where `npx cap sync ios` regenerates `ios/App/CapApp-SPM/Package.swift` from scratch and doesn't reliably keep locally-pathed plugin SPM packages wired into it — so this plugin can silently disappear from your app's dependency graph on **every** `cap sync`, not just the first one, producing a `{"code":"UNIMPLEMENTED"}` error at runtime with no other symptoms. Separately, because this plugin ships as a Swift Package Manager (static-by-default) library, iOS's Objective-C-runtime-based plugin auto-discovery needs the app target's **Other Linker Flags** to include `-ObjC`, or the linker can drop the plugin's classes as "unreferenced."
 
-This script fixes both, and is safe to re-run any number of times (it only adds what's missing — see "How the iOS scripts work" below for the mechanics).
+This script fixes both, and is safe to re-run any number of times (it only adds what's missing — see "How the iOS fix script works" below for the mechanics).
 
-### 3. Wire both scripts into your `package.json`
+### 2. Wire the script into your `package.json`
 
 ```json
 "scripts": {
-  "postinstall": "wm-capacitor-sync-ios-variant && wm-capacitor-fix-ios-project",
+  "postinstall": "wm-capacitor-fix-ios-project",
   "capacitor:sync:after": "wm-capacitor-fix-ios-project"
 }
 ```
 
 `capacitor:sync:after` is an official [Capacitor CLI hook](https://capacitorjs.com/docs/cli/hooks) — with it wired in, the fix reapplies automatically after every `npm install` *and* every `cap sync`, the two moments that can undo it. You should never need to hand-edit `CapApp-SPM/Package.swift` or the Xcode project's linker flags again.
 
-### 4. Install & run
+### 3. Install & run
 
 ```bash
 npm install
@@ -130,17 +122,13 @@ npx cap open ios
 
 In Xcode: quit and reopen after the first sync (so it re-resolves Swift packages), Product → Clean Build Folder, then build & run.
 
-To switch flavors later, edit `walkme.walkmeMode` in `package.json` and re-run `npm install` (or `npx wm-capacitor-sync-ios-variant` directly), then `npx cap sync ios`.
+To switch flavors later, just edit `walkme.walkmeMode` in `package.json` and re-run `npx cap sync ios` — `Package.swift` picks up the new value on the next SPM resolution, no extra command needed.
 
 ---
 
-## How the iOS scripts work
+## How the iOS fix script works
 
-Both scripts ship inside this npm package (`scripts/`) and are exposed as `bin` entries, so `npx` finds them without any path fiddling.
-
-### `wm-capacitor-sync-ios-variant`
-
-Reads `walkme.walkmeMode` (package.json, or `WALKME_FLAVOR` env var override), normalizes it, and regex-replaces the `let walkmeVariant = "..."` line in this plugin's own `ios/Package.swift`. This selects which adapter target (`WalkMeStandardAdapter` vs `WalkMeEditorAdapter`, and therefore which native WalkMe SDK) gets linked in.
+The script ships inside this npm package (`scripts/`) and is exposed as a `bin` entry, so `npx` finds it without any path fiddling.
 
 ### `wm-capacitor-fix-ios-project`
 
@@ -267,6 +255,27 @@ Both variants support the full method set above. The item lifecycle / analytics 
 | `itemActionType`      | `string?`             | Dismiss/action type, depending on the event  |
 | `userData`            | `WMUserData?`         | Device/session metadata                      |
 
+### `WMUserData`
+
+| Field               | Type       |
+| --------------------- | ----------- |
+| `userAttributesMap`   | `Record<string, string>?` |
+| `sessionDuration`     | `number?`  |
+| `deviceVersion`       | `string?`  |
+| `deviceId`            | `string?`  |
+| `deviceModel`         | `string?`  |
+| `deviceOrientation`   | `string?`  |
+| `appVersion`          | `string?`  |
+| `appName`             | `string?`  |
+| `locale`              | `string?`  |
+| `sdkVer`              | `string?`  |
+| `sessionId`           | `string?`  |
+| `isNewUser`           | `boolean?` |
+| `timezone`            | `string?`  |
+| `network`             | `string?`  |
+| `systemName`          | `string?`  |
+| `timestamp`           | `number?`  |
+
 ### `WMAnalyticsEvent`
 
 | Field       | Type                     | Description                     |
@@ -281,7 +290,7 @@ Both variants support the full method set above. The item lifecycle / analytics 
 | Symptom                                                          | Cause                                                | Fix                                                                          |
 | ------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | `{"code":"UNIMPLEMENTED"}` from any WalkMe call                     | Plugin missing from `ios/App/CapApp-SPM/Package.swift` (`cap sync` regression, ionic-team/capacitor#8325) or missing `-ObjC` linker flag | Run `npx wm-capacitor-fix-ios-project`; confirm it's wired into `postinstall` + `capacitor:sync:after` |
-| `wm-capacitor-sync-ios-variant`/`wm-capacitor-fix-ios-project`: "Unknown walkme.walkmeMode ..." | Typo in `walkme.walkmeMode`                             | Use exactly `WalkMe` or `WalkMeEditor` (any casing), or check the `WALKME_FLAVOR` env var |
+| SPM resolution logs `warning: [WalkMePlugin] Unknown ...` and the wrong variant links | Typo in `walkme.walkmeMode` (or `WALKME_FLAVOR`)        | Use exactly `WalkMe` or `WalkMeEditor` (any casing) — an unrecognized value falls back to `"standard"` rather than failing the build (Android fails the build on this instead), so check for this warning if the wrong SDK links |
 | SPM: "Dependencies could not be resolved" — two version requirements for `capacitor-swift-pm` | Your Capacitor version's generated `CapApp-SPM` pins an exact `capacitor-swift-pm` version outside this plugin's supported range | File an issue/bump the plugin — the range in `ios/Package.swift` needs widening for that Capacitor version |
 | Launch crash: `Library not loaded: @rpath/Lottie.framework/Lottie` | `Lottie.framework` missing from the app bundle | Should not happen — the plugin depends on `lottie-spm` (airbnb's prebuilt dynamic `Lottie.xcframework`), which auto-embeds `Lottie.framework`. If you hit this, do a clean SPM re-resolve (Xcode → File → Packages → Reset Package Caches, or delete `DerivedData`) and confirm `App.app/Frameworks/Lottie.framework` exists after building. |
 | Editor SDK Compose-related build errors (Android, not iOS)         | Host app already declares its own Compose BOM at a different version | Reconcile manually — see "Known gaps" below                                     |
@@ -309,8 +318,8 @@ A **major** version bump from WalkMe on either platform needs a manual update:
 1. **iOS SPM + Capacitor 8**: open upstream issue (ionic-team/capacitor#8325) where plugin SPM products aren't always exposed/kept wired into the generated Xcode project. Handled by `npx wm-capacitor-fix-ios-project` as long as it's wired into both `postinstall` and `capacitor:sync:after` — see iOS Setup above.
 2. **Lottie framework embedding**: WalkMe's iOS SDK binaries hard-require a *dynamic* framework named exactly `Lottie.framework` (`@rpath/Lottie.framework/Lottie`). Handled automatically: the plugin depends on **`lottie-spm`** (airbnb's official SPM distribution of the prebuilt dynamic `Lottie.xcframework`) in `ios/Package.swift`, so `Lottie.framework` builds with the correct name and Xcode auto-embeds it — no host-app Xcode step. Uses a `from:` version range (no hand-managed checksum), and being a shared package it unifies cleanly with a host app that also uses `lottie-spm`.
 3. **Editor SDK Compose deps** (Android): currently always added when `walkmeMode` resolves to `WalkMeEditor`; if the host app already declares its own Compose BOM at a different version, reconcile manually.
-4. **`xcode` npm package dependency**: `wm-capacitor-fix-ios-project` uses it read-only (to locate build configuration UUIDs), then edits `project.pbxproj` via direct text splicing rather than the package's own `writeSync()` (see "How the iOS scripts work" above). Worth re-checking if the `xcode` package is ever upgraded.
-5. **Variant setup ergonomics**: handled via the shared `walkme.walkmeMode` field in `package.json` (see "Select a Flavor" above) rather than hand-editing `node_modules`. iOS still needs the extra sync step Android doesn't — inherent to SPM having no project-graph equivalent.
+4. **`xcode` npm package dependency**: `wm-capacitor-fix-ios-project` uses it read-only (to locate build configuration UUIDs), then edits `project.pbxproj` via direct text splicing rather than the package's own `writeSync()` (see "How the iOS fix script works" above). Worth re-checking if the `xcode` package is ever upgraded.
+5. **Variant setup ergonomics**: handled via the shared `walkme.walkmeMode` field in `package.json` (see "Select a Flavor" above). Android reads it via Gradle's project graph; iOS's `Package.swift` reads it directly off the host app's `package.json` via an upward file walk — neither platform needs a sync step for this.
 
 ## License
 

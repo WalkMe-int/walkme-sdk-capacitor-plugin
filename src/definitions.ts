@@ -33,6 +33,13 @@ export interface WalkMeStartOptions {
   language?: string;
   /** End-user id, applied at start instead of a follow-up setUserId call. */
   userId?: string;
+  /**
+   * Base http(s) URL of self-hosted WalkMe content (no query or fragment).
+   * When set, the SDK loads `<selfHostedUrl>/<systemGuid>/settings.json` and
+   * the files it references from your server instead of the WalkMe CDN.
+   * Standard (player) variant only; ignored on editor.
+   */
+  selfHostedUrl?: string;
 }
 
 export type WalkMeEventUserVarsKey = 'name' | 'role' | 'type' | 'status' | 'info';

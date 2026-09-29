@@ -34,6 +34,7 @@ public struct WMStartOptions {
     public let localLogsEnabled: Bool
     public let language: String?
     public let userId: String?
+    public let selfHostedUrl: String? // standard variant only; editor SDK has no equivalent
 
     public init(
         systemGuid: String,
@@ -42,7 +43,8 @@ public struct WMStartOptions {
         analyticsEnabled: Bool = true,
         localLogsEnabled: Bool = false,
         language: String? = nil,
-        userId: String? = nil
+        userId: String? = nil,
+        selfHostedUrl: String? = nil
     ) {
         self.systemGuid = systemGuid
         self.environment = environment
@@ -51,6 +53,7 @@ public struct WMStartOptions {
         self.localLogsEnabled = localLogsEnabled
         self.language = language
         self.userId = userId
+        self.selfHostedUrl = selfHostedUrl
     }
 }
 

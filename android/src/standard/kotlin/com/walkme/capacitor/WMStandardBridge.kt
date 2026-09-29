@@ -22,6 +22,7 @@ class WMStandardBridge : WMBridge {
         )
         startOptions.analyticsEnabled = options.analyticsEnabled
         startOptions.localLogsEnabled = options.localLogsEnabled
+        options.selfHostedUrl?.let { startOptions.selfHostedUrl = it }
         WalkMeSDK.start(activity, startOptions)
         options.language?.let { WalkMeSDK.setLanguage(it) }
         options.userId?.let { WalkMeSDK.setUserId(it) }

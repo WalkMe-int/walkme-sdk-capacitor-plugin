@@ -21,6 +21,7 @@ public final class WMStandardAdapter: WMBridge {
         startOptions.analyticMode = options.analyticsEnabled ? .ON : .OFF
         options.language.map { startOptions.language = $0 }
         options.userId.map { startOptions.userId = $0 }
+        options.selfHostedUrl.map { startOptions.selfHostedUrl = $0 }
         WalkMeSDK.start(options: startOptions)
     }
 

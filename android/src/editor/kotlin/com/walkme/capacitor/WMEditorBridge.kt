@@ -23,6 +23,7 @@ class WMEditorBridge : WMBridge {
             environment = options.environment,
             dataCenter = toDataCenter(options.dataCenter),
         )
+        startOptions.localLogsEnabled = options.localLogsEnabled
         WalkmeSdkPowerMode.start(activity, startOptions)
         options.language?.let { WalkmeSdkPowerMode.setLanguage(it) }
         options.userId?.let { WalkmeSdkPowerMode.setUserId(it) }

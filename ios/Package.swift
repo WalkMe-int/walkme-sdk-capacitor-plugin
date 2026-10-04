@@ -139,7 +139,7 @@ func walkmeSDKDependency(url: String, floor: String, isActive: Bool) -> Package.
 
 let package = Package(
     name: "WalkMePlugin",
-    platforms: [.iOS(.v14)],
+    platforms: [.iOS(.v15)],
     products: [
         .library(name: "WalkMePlugin", targets: ["WalkMePlugin"])
     ],

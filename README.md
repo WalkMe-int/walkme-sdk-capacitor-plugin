@@ -9,7 +9,7 @@ Capacitor bridge for **WalkMe** and WalkMe Power Mode (**WalkMeEditor**) SDKs on
 
 |                     | Android              | iOS                    |
 | ------------------- | -------------------- | ---------------------- |
-| Min OS               | Android 7.0 (API 24) | iOS 14                 |
+| Min OS               | Android 7.0 (API 24) | iOS 15                 |
 | Native SDK source    | JitPack               | Swift Package Manager  |
 | Required Capacitor    | 6+ (Android)          | 8+ |
 

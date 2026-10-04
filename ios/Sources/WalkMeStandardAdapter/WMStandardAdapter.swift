@@ -19,6 +19,7 @@ public final class WMStandardAdapter: WMBridge {
         startOptions.environment = options.environment
         startOptions.dataCenter = Self.toDataCenter(options.dataCenter)
         startOptions.analyticMode = options.analyticsEnabled ? .ON : .OFF
+        startOptions.logsEnabled = options.localLogsEnabled
         options.language.map { startOptions.language = $0 }
         options.userId.map { startOptions.userId = $0 }
         options.selfHostedUrl.map { startOptions.selfHostedUrl = $0 }

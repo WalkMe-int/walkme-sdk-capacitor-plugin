@@ -7,6 +7,7 @@ import com.walkme.api.WalkmeDataCenter
 import com.walkme.api.info.WMItemInfo
 import com.walkme.api.info.WMItemInfoListener
 import com.walkme.sdk.WalkMeSDK
+import com.walkme.sdk.selfHostedUrl // extension property on WalkMeStartOptions (SDK 1.3.1+)
 import org.json.JSONObject
 
 /** Backs the plugin with `com.walkme.sdk.WalkMeSDK` (core / non-editor artifact). */

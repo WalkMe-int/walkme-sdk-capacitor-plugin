@@ -53,7 +53,8 @@ public class WalkMePlugin: CAPPlugin, CAPBridgedPlugin, WMEventEmitter {
             analyticsEnabled: call.getBool("analyticsEnabled") ?? true,
             localLogsEnabled: call.getBool("localLogsEnabled") ?? false,
             language: call.getString("language"),
-            userId: call.getString("userId")
+            userId: call.getString("userId"),
+            selfHostedUrl: call.getString("selfHostedUrl")
         )
         wmBridge.setEventEmitter(self)
         wmBridge.start(options: options)

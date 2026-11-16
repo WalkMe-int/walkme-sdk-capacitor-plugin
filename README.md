@@ -9,7 +9,7 @@ Capacitor bridge for **WalkMe** and WalkMe Power Mode (**WalkMeEditor**) SDKs on
 
 |                     | Android              | iOS                    |
 | ------------------- | -------------------- | ---------------------- |
-| Min OS               | Android 7.0 (API 24) | iOS 14                 |
+| Min OS               | Android 7.0 (API 24) | iOS 15                 |
 | Native SDK source    | JitPack               | Swift Package Manager  |
 | Required Capacitor    | 6+ (Android)          | 8+ |
 
@@ -236,6 +236,11 @@ Both variants support the full method set above. The item lifecycle / analytics 
 | `localLogsEnabled`   | `boolean`                |          | `false`        |
 | `language`           | `string`                 |          | —              |
 | `userId`             | `string`                 |          | —              |
+| `selfHostedUrl`     | `string` (standard only) |          | —              |
+
+#### Self-hosted content (`selfHostedUrl`)
+
+When `selfHostedUrl` is set, the SDK loads WalkMe content from your own server instead of the WalkMe CDN. Provide the base `http(s)` URL with no query string or fragment; the SDK appends `/<systemGuid>/settings.json` and the paths that file references. Requires WalkMe SDK 1.3.0+ (the iOS floor is already pinned there; Android resolves the latest by default). Standard (player) variant only — ignored on the editor variant.
 
 ### Event listeners
 

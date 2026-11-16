@@ -43,6 +43,7 @@ data class WMStartOptions(
     val localLogsEnabled: Boolean = false,
     val language: String? = null,
     val userId: String? = null,
+    val selfHostedUrl: String? = null, // standard variant only; editor SDK has no equivalent
 )
 
 /** Sink the bridge implementations push native lifecycle/analytics events into. */

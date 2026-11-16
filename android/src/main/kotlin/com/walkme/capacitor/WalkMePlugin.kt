@@ -29,6 +29,7 @@ class WalkMePlugin : Plugin(), WMEventEmitter {
             localLogsEnabled = call.getBoolean("localLogsEnabled", false)!!,
             language = call.getString("language"),
             userId = call.getString("userId"),
+            selfHostedUrl = call.getString("selfHostedUrl"),
         )
         runCatching {
             bridge.setEventEmitter(this)

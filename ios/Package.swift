@@ -112,7 +112,9 @@ let walkmeVersionOverride = resolveWalkmeVersion()
 // WalkMe release requires bumping the base version below by hand (SwiftPM
 // treats major bumps as potentially breaking and won't cross them
 // automatically), same tradeoff as any real dependency-pinning strategy.
-let walkmeStandardMinVersion = "1.1.4"
+// 1.3.0 is the first standard-SDK release with self-hosted content support
+// (selfHostedUrl start option); keep the floor at or above it.
+let walkmeStandardMinVersion = "1.3.0"
 // Was "0.1.6" (the editor SDK's old 0.x beta line). WalkMe has since shipped
 // a stable 1.x line (currently 1.1.2), but SPM's `from:` caps resolution at
 // the next major version — so the 0.1.6 floor was silently preventing this
@@ -139,7 +141,7 @@ func walkmeSDKDependency(url: String, floor: String, isActive: Bool) -> Package.
 
 let package = Package(
     name: "WalkMePlugin",
-    platforms: [.iOS(.v14)],
+    platforms: [.iOS(.v15)],
     products: [
         .library(name: "WalkMePlugin", targets: ["WalkMePlugin"])
     ],
